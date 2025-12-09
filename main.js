@@ -73,13 +73,45 @@ function initDatabase() {
 }
 
 function createTray() {
-  // 创建紫色方块托盘图标
+  // 创建带有"S"字母的紫色方块托盘图标
+  const size = 16;
+  const pixels = [];
+  
+  // S字母的像素图案 (简化的5x7像素S字母)
+  const sPattern = [
+    [0,1,1,1,0],
+    [1,0,0,0,1],
+    [1,0,0,0,0],
+    [0,1,1,1,0],
+    [0,0,0,0,1],
+    [1,0,0,0,1],
+    [0,1,1,1,0]
+  ];
+  
+  // 计算S字母的起始位置（居中）
+  const startX = Math.floor((size - 5) / 2);
+  const startY = Math.floor((size - 7) / 2);
+  
+  // 生成16x16的像素数据
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      // 检查当前像素是否在S字母范围内
+      const sX = x - startX;
+      const sY = y - startY;
+      
+      if (sX >= 0 && sX < 5 && sY >= 0 && sY < 7 && sPattern[sY][sX] === 1) {
+        // S字母部分 - 白色
+        pixels.push(255, 255, 255, 255);
+      } else {
+        // 背景 - 紫色 #8b5cf6
+        pixels.push(139, 92, 246, 255);
+      }
+    }
+  }
+  
   const image = nativeImage.createFromBuffer(
-    Buffer.from([
-      // 16x16 紫色方块的RGBA像素数据
-      ...Array(16 * 16).fill(0).flatMap(() => [139, 92, 246, 255]) // 紫色 #8b5cf6
-    ]), 
-    { width: 16, height: 16 }
+    Buffer.from(pixels), 
+    { width: size, height: size }
   );
   
   tray = new Tray(image);

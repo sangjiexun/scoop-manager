@@ -30,10 +30,29 @@
           浏览可用程序
         </button>
         <button class="nav-item" data-view="docker" id="dockerNavItem" style="display: none;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M20.5 10.5h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v2h2v2h-2v2h2v2h2v-2h2v-2h2v2h2v-2h2v2h2v-2h2v-2h-2v-2h2v-2z" fill="currentColor"/>
+          <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:serif="http://www.serif.com/" width="20" height="16" viewBox="0 0 38 30" version="1.1" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;" data-relingo-block="true">
+            <g>
+              <clipPath id="_clip1">
+                <rect x="0" y="-0.018" width="140" height="30.018"></rect>
+              </clipPath>
+              <g clip-path="url(#_clip1)">
+                <path d="M37.413,12.315c-0.933,-0.627 -3.382,-0.896 -5.163,-0.415c-0.097,-1.774 -1.012,-3.27 -2.685,-4.573l-0.619,-0.416l-0.414,0.624c-0.811,1.232 -1.153,2.873 -1.032,4.366c0.095,0.92 0.415,1.953 1.032,2.703c-2.318,1.345 -4.455,1.039 -13.919,1.039l-14.61,0c-0.042,2.137 0.302,6.248 2.915,9.593c0.289,0.37 0.604,0.727 0.948,1.072c2.126,2.128 5.336,3.689 10.138,3.693c7.325,0.007 13.601,-3.953 17.419,-13.527c1.257,0.02 4.572,0.225 6.195,-2.911c0.039,-0.052 0.413,-0.831 0.413,-0.831l-0.618,-0.415l0,-0.002Zm-27.875,-1.953l-4.108,0l-0,4.108l4.108,0l0,-4.108Zm5.308,0l-4.108,0l-0,4.108l4.108,0l0,-4.108Zm5.308,0l-4.108,0l-0,4.108l4.108,0l0,-4.108Zm5.308,0l-4.108,0l-0,4.108l4.108,0l0,-4.108Zm-21.232,0l-4.108,0l-0,4.108l4.108,0l0,-4.108Zm5.308,-5.19l-4.108,-0l-0,4.108l4.108,0l0,-4.108Zm5.308,-0l-4.108,-0l-0,4.108l4.108,0l0,-4.108Zm5.308,-0l-4.108,-0l-0,4.108l4.108,0l0,-4.108Zm0,-5.19l-4.108,0l-0,4.109l4.108,-0l0,-4.109Z" style="fill:currentColor;fill-rule:nonzero;"></path>
+              </g>
+            </g>
           </svg>
           Docker 配置
+        </button>
+        <button class="nav-item" data-view="containers" id="containersNavItem" style="display: none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M4 6h16v2H4zm0 5h16v6H4zm2 2h12v2H6z" fill="currentColor"/>
+          </svg>
+          容器管理
+        </button>
+        <button class="nav-item" data-view="console">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M2 3h20c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H2c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2zm0 2v14h20V5H2zm2 2h2v2H4V7zm4 0h10v2H8V7zm-4 4h2v2H4v-2zm4 0h10v2H8v-2z" fill="currentColor"/>
+          </svg>
+          AI 控制台
         </button>
       </nav>
     </aside>
@@ -163,6 +182,119 @@
               <div class="docker-status">
                 <span class="status-indicator" id="dockerStatus"></span>
                 <span id="dockerStatusText">检查中...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="containersView" class="view">
+        <h2 class="view-title">Docker 容器管理</h2>
+        <div class="containers-header">
+          <div class="containers-actions">
+            <button class="btn btn-primary" id="refreshContainersBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
+              </svg>
+              刷新
+            </button>
+            <div class="containers-filter">
+              <select id="containerStatusFilter" class="config-select">
+                <option value="">所有状态</option>
+                <option value="running">运行中</option>
+                <option value="exited">已停止</option>
+                <option value="paused">已暂停</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="containers-table">
+          <div class="table-header">
+            <div class="table-cell">#</div>
+            <div class="table-cell">容器名称</div>
+            <div class="table-cell">状态</div>
+            <div class="table-cell">镜像</div>
+            <div class="table-cell">端口</div>
+            <div class="table-cell">操作</div>
+          </div>
+          <div id="containersTableBody" class="table-body">
+            <div class="loading">加载容器列表...</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="consoleView" class="view">
+        <h2 class="view-title">AI 控制台</h2>
+        
+        <div class="console-container">
+          <div class="console-config">
+            <div class="config-section">
+              <h3 class="config-section-title">AI 配置</h3>
+              
+              <div class="config-row">
+                <div class="config-item">
+                  <label class="config-label">API 端点</label>
+                  <input type="text" id="aiEndpoint" class="config-input" placeholder="https://api.openai.com/v1/chat/completions" value="https://api.openai.com/v1/chat/completions">
+                </div>
+                <div class="config-item">
+                  <label class="config-label">模型名称</label>
+                  <input type="text" id="aiModel" class="config-input" placeholder="gpt-3.5-turbo" value="gpt-3.5-turbo">
+                </div>
+              </div>
+              
+              <div class="config-item">
+                <label class="config-label">API Key</label>
+                <input type="password" id="aiApiKey" class="config-input" placeholder="sk-...">
+              </div>
+              
+              <div class="config-item">
+                <label class="config-label">提示词模板</label>
+                <textarea id="aiPromptTemplate" class="config-textarea" rows="6" placeholder="提示词模板">你是一个 Windows 系统和 Docker 管理专家。请根据用户的问题生成3个安全可执行的 PowerShell 或 CMD 命令。
+
+要求：
+1. 优先使用 PowerShell 命令，避免使用已弃用的 wmic
+2. 生成的命令必须在 Windows 系统上可执行
+3. 避免包含密码、敏感信息的命令
+4. 每个指令用换行分隔，不要添加编号
+5. 不要添加额外的解释文字
+6. 对于系统信息，使用 Get-ComputerInfo, Get-Process 等 PowerShell 命令
+7. 对于 Docker 命令，优先使用查看、列表类的安全命令
+
+用户问题：{question}</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="console-chat">
+            <div class="chat-messages" id="chatMessages">
+              <div class="welcome-message">
+                <h3>🤖 AI 助手</h3>
+                <p>输入你的问题，我会为你生成相应的命令行指令</p>
+                
+                <div class="quick-commands">
+                  <h4>常用命令示例：</h4>
+                  <div class="quick-command-buttons">
+                    <button class="quick-cmd-btn" onclick="setQuickQuestion('查看系统基本信息')">系统信息</button>
+                    <button class="quick-cmd-btn" onclick="setQuickQuestion('查看 Docker 容器状态')">Docker 容器</button>
+                    <button class="quick-cmd-btn" onclick="setQuickQuestion('查看网络配置信息')">网络配置</button>
+                    <button class="quick-cmd-btn" onclick="setQuickQuestion('查看磁盘空间使用情况')">磁盘信息</button>
+                    <button class="quick-cmd-btn" onclick="setQuickQuestion('查看当前运行的进程')">进程列表</button>
+                    <button class="quick-cmd-btn" onclick="setQuickQuestion('查看 Windows 服务状态')">系统服务</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="chat-input-container">
+              <div class="chat-input-wrapper">
+                <input type="text" id="chatInput" class="chat-input" placeholder="请输入你的问题，例如：如何查看系统信息？">
+                <button id="sendChatBtn" class="btn btn-primary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
+                  </svg>
+                  发送
+                </button>
               </div>
             </div>
           </div>

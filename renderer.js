@@ -2,6 +2,7 @@ let currentView = 'installed';
 let installedApps = [];
 let availableApps = [];
 let dockerInstalled = false;
+let containers = [];
 
 const navItems = document.querySelectorAll('.nav-item');
 const views = document.querySelectorAll('.view');
@@ -10,6 +11,7 @@ const refreshBtn = document.getElementById('refreshBtn');
 const installedAppsContainer = document.getElementById('installedApps');
 const availableAppsContainer = document.getElementById('availableApps');
 const dockerNavItem = document.getElementById('dockerNavItem');
+const containersNavItem = document.getElementById('containersNavItem');
 
 navItems.forEach(item => {
   item.addEventListener('click', () => {
@@ -41,11 +43,20 @@ function switchView(viewName) {
   searchInput.value = '';
   
   if (viewName === 'installed') {
+    stopContainerAutoRefresh();
     loadInstalledApps();
   } else if (viewName === 'available') {
+    stopContainerAutoRefresh();
     loadAvailableApps();
   } else if (viewName === 'docker') {
+    stopContainerAutoRefresh();
     loadDockerConfig();
+  } else if (viewName === 'containers') {
+    loadContainers();
+    startContainerAutoRefresh();
+  } else if (viewName === 'console') {
+    stopContainerAutoRefresh();
+    loadConsoleConfig();
   }
 }
 
@@ -287,56 +298,31 @@ searchInput.addEventListener('input', (e) => {
   }
 });
 
-// Docker 配置相关
-const diskSizeSlider = document.getElementById('diskSize');
-const diskValue = document.getElementById('diskValue');
-const memorySizeSlider = document.getElementById('memorySize');
-const memoryValue = document.getElementById('memoryValue');
-const cpuCoresSlider = document.getElementById('cpuCores');
-const cpuValue = document.getElementById('cpuValue');
-const registryMirror = document.getElementById('registryMirror');
-const enableExperimental = document.getElementById('enableExperimental');
-const enableBuildKit = document.getElementById('enableBuildKit');
-const saveDockerConfigBtn = document.getElementById('saveDockerConfig');
-const resetDockerConfigBtn = document.getElementById('resetDockerConfig');
-const stopDockerBtn = document.getElementById('stopDockerBtn');
-const restartDockerBtn = document.getElementById('restartDockerBtn');
-const dockerStatus = document.getElementById('dockerStatus');
-const dockerStatusText = document.getElementById('dockerStatusText');
+// Docker 配置相关 - 使用延迟获取避免 DOM 未加载问题
+let diskSizeSlider, diskValue, memorySizeSlider, memoryValue, cpuCoresSlider, cpuValue;
+let registryMirror, enableExperimental, enableBuildKit;
+let saveDockerConfigBtn, resetDockerConfigBtn, stopDockerBtn, restartDockerBtn;
+let dockerStatus, dockerStatusText;
 
-// 滑块值更新
-diskSizeSlider.addEventListener('input', (e) => {
-  diskValue.textContent = e.target.value;
-});
+function initDockerElements() {
+  diskSizeSlider = document.getElementById('diskSize');
+  diskValue = document.getElementById('diskValue');
+  memorySizeSlider = document.getElementById('memorySize');
+  memoryValue = document.getElementById('memoryValue');
+  cpuCoresSlider = document.getElementById('cpuCores');
+  cpuValue = document.getElementById('cpuValue');
+  registryMirror = document.getElementById('registryMirror');
+  enableExperimental = document.getElementById('enableExperimental');
+  enableBuildKit = document.getElementById('enableBuildKit');
+  saveDockerConfigBtn = document.getElementById('saveDockerConfig');
+  resetDockerConfigBtn = document.getElementById('resetDockerConfig');
+  stopDockerBtn = document.getElementById('stopDockerBtn');
+  restartDockerBtn = document.getElementById('restartDockerBtn');
+  dockerStatus = document.getElementById('dockerStatus');
+  dockerStatusText = document.getElementById('dockerStatusText');
+}
 
-memorySizeSlider.addEventListener('input', (e) => {
-  memoryValue.textContent = e.target.value;
-});
-
-cpuCoresSlider.addEventListener('input', (e) => {
-  cpuValue.textContent = e.target.value;
-});
-
-// 保存 Docker 配置
-saveDockerConfigBtn.addEventListener('click', () => {
-  const config = {
-    diskSize: parseInt(diskSizeSlider.value),
-    memory: parseInt(memorySizeSlider.value),
-    cpus: parseInt(cpuCoresSlider.value),
-    registryMirror: registryMirror.value,
-    experimental: enableExperimental.checked,
-    buildKit: enableBuildKit.checked
-  };
-  
-  saveDockerConfig(config);
-});
-
-// 重置 Docker 配置
-resetDockerConfigBtn.addEventListener('click', () => {
-  if (confirm('确定要重置为默认配置吗？')) {
-    resetDockerConfigToDefault();
-  }
-});
+// 滑块事件监听器已移到 initApp 函数中
 
 function loadDockerConfig() {
   // 从本地存储加载配置
@@ -390,21 +376,331 @@ function checkDockerInstalled() {
   
   if (dockerApp) {
     dockerInstalled = true;
-    dockerNavItem.style.display = 'flex';
+    if (dockerNavItem) dockerNavItem.style.display = 'flex';
+    if (containersNavItem) containersNavItem.style.display = 'flex';
+    
+    // 如果当前在容器管理页面，自动加载容器列表
+    if (currentView === 'containers') {
+      loadContainers();
+    }
   } else {
     dockerInstalled = false;
-    dockerNavItem.style.display = 'none';
+    if (dockerNavItem) dockerNavItem.style.display = 'none';
+    if (containersNavItem) containersNavItem.style.display = 'none';
   }
 }
 
+// 容器管理功能
+const refreshContainersBtn = document.getElementById('refreshContainersBtn');
+const containerStatusFilter = document.getElementById('containerStatusFilter');
+const containersTableBody = document.getElementById('containersTableBody');
+
+refreshContainersBtn.addEventListener('click', loadContainers);
+
+containerStatusFilter.addEventListener('change', () => {
+  const filter = containerStatusFilter.value;
+  renderContainers(containers, filter);
+});
+
+let containerRefreshInterval = null;
+
+async function loadContainers() {
+  if (!containersTableBody) return;
+  
+  containersTableBody.innerHTML = '<div class="loading">加载容器列表...</div>';
+  
+  try {
+    const result = await window.electronAPI.getContainers();
+    containers = result.containers || [];
+    renderContainers(containers);
+    
+    if (result.message) {
+      showToast(result.message, 'info');
+    }
+  } catch (error) {
+    containersTableBody.innerHTML = '<div class="loading">加载失败: ' + error.message + '</div>';
+  }
+}
+
+function startContainerAutoRefresh() {
+  // 清除现有的定时器
+  if (containerRefreshInterval) {
+    clearInterval(containerRefreshInterval);
+  }
+  
+  // 每30秒自动刷新容器列表
+  containerRefreshInterval = setInterval(() => {
+    if (currentView === 'containers' && dockerInstalled) {
+      loadContainers();
+    }
+  }, 30000);
+}
+
+function stopContainerAutoRefresh() {
+  if (containerRefreshInterval) {
+    clearInterval(containerRefreshInterval);
+    containerRefreshInterval = null;
+  }
+}
+
+function renderContainers(containerList, statusFilter = '') {
+  let filteredContainers = containerList;
+  
+  if (statusFilter) {
+    filteredContainers = containerList.filter(container => 
+      container.status.toLowerCase().includes(statusFilter.toLowerCase())
+    );
+  }
+  
+  if (filteredContainers.length === 0) {
+    const message = containerList.length === 0 ? '暂无容器' : '没有匹配的容器';
+    containersTableBody.innerHTML = `<div class="loading">${message}</div>`;
+    return;
+  }
+  
+  containersTableBody.innerHTML = filteredContainers.map((container, index) => {
+    const statusText = container.status === 'running' ? '运行中' : '已停止';
+    const statusClass = container.status.toLowerCase();
+    
+    return `
+      <div class="table-row">
+        <div class="table-cell">#${index + 1}</div>
+        <div class="table-cell" title="${container.name}">
+          ${container.name.length > 20 ? container.name.substring(0, 20) + '...' : container.name}
+        </div>
+        <div class="table-cell">
+          <span class="container-status ${statusClass}">${statusText}</span>
+        </div>
+        <div class="table-cell" title="${container.image}">
+          ${container.image.length > 25 ? container.image.substring(0, 25) + '...' : container.image}
+        </div>
+        <div class="table-cell">${container.ports || '-'}</div>
+        <div class="table-cell">
+          <div class="container-actions">
+            ${container.status === 'running' ? 
+              `<button class="btn btn-secondary" onclick="stopContainer('${container.id}')">停止</button>` :
+              `<button class="btn btn-primary" onclick="startContainer('${container.id}')">启动</button>`
+            }
+            <button class="btn btn-danger" onclick="removeContainer('${container.id}')">删除</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function startContainer(containerId) {
+  try {
+    const result = await window.electronAPI.startContainer(containerId);
+    if (result.success) {
+      showToast('容器启动成功', 'success');
+      loadContainers();
+    } else {
+      showToast('启动失败: ' + result.message, 'error');
+    }
+  } catch (error) {
+    showToast('启动失败: ' + error.message, 'error');
+  }
+}
+
+async function stopContainer(containerId) {
+  try {
+    const result = await window.electronAPI.stopContainer(containerId);
+    if (result.success) {
+      showToast('容器停止成功', 'success');
+      loadContainers();
+    } else {
+      showToast('停止失败: ' + result.message, 'error');
+    }
+  } catch (error) {
+    showToast('停止失败: ' + error.message, 'error');
+  }
+}
+
+async function removeContainer(containerId) {
+  if (!confirm('确定要删除这个容器吗？')) {
+    return;
+  }
+  
+  try {
+    const result = await window.electronAPI.removeContainer(containerId);
+    if (result.success) {
+      showToast('容器删除成功', 'success');
+      loadContainers();
+    } else {
+      showToast('删除失败: ' + result.message, 'error');
+    }
+  } catch (error) {
+    showToast('删除失败: ' + error.message, 'error');
+  }
+}
+
+// AI 控制台功能
+const aiEndpoint = document.getElementById('aiEndpoint');
+const aiModel = document.getElementById('aiModel');
+const aiApiKey = document.getElementById('aiApiKey');
+const aiPromptTemplate = document.getElementById('aiPromptTemplate');
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const sendChatBtn = document.getElementById('sendChatBtn');
+
+sendChatBtn.addEventListener('click', sendMessage);
+chatInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    sendMessage();
+  }
+});
+
+function loadConsoleConfig() {
+  // 从本地存储加载 AI 配置
+  const savedConfig = localStorage.getItem('aiConfig');
+  if (savedConfig) {
+    const config = JSON.parse(savedConfig);
+    aiEndpoint.value = config.endpoint || 'https://api.openai.com/v1/chat/completions';
+    aiModel.value = config.model || 'gpt-3.5-turbo';
+    aiApiKey.value = config.apiKey || '';
+    aiPromptTemplate.value = config.promptTemplate || aiPromptTemplate.value;
+  }
+}
+
+function saveConsoleConfig() {
+  const config = {
+    endpoint: aiEndpoint.value,
+    model: aiModel.value,
+    apiKey: aiApiKey.value,
+    promptTemplate: aiPromptTemplate.value
+  };
+  localStorage.setItem('aiConfig', JSON.stringify(config));
+}
+
+async function sendMessage() {
+  const question = chatInput.value.trim();
+  if (!question) return;
+  
+  // 保存配置
+  saveConsoleConfig();
+  
+  // 添加用户消息
+  addMessage('user', question);
+  chatInput.value = '';
+  
+  // 显示加载状态
+  const loadingId = addMessage('ai', '正在思考中...');
+  
+  try {
+    const config = {
+      endpoint: aiEndpoint.value,
+      model: aiModel.value,
+      apiKey: aiApiKey.value,
+      promptTemplate: aiPromptTemplate.value
+    };
+    
+    const result = await window.electronAPI.askAI(question, config);
+    
+    // 移除加载消息
+    removeMessage(loadingId);
+    
+    if (result.success) {
+      addAIResponse(result.commands);
+    } else {
+      addMessage('ai', '抱歉，生成指令时出现错误: ' + result.message);
+    }
+  } catch (error) {
+    removeMessage(loadingId);
+    addMessage('ai', '请求失败: ' + error.message);
+  }
+}
+
+function addMessage(type, content) {
+  const messageId = Date.now();
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `chat-message message-${type}`;
+  messageDiv.id = `message-${messageId}`;
+  
+  messageDiv.innerHTML = `
+    <div class="message-content">${content}</div>
+  `;
+  
+  chatMessages.appendChild(messageDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  
+  return messageId;
+}
+
+function removeMessage(messageId) {
+  const messageEl = document.getElementById(`message-${messageId}`);
+  if (messageEl) {
+    messageEl.remove();
+  }
+}
+
+function addAIResponse(commands) {
+  if (!commands || commands.length === 0) {
+    addMessage('ai', '抱歉，无法生成有效的命令。请尝试重新描述你的问题。');
+    return;
+  }
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'chat-message message-ai';
+  
+  const optionsHtml = commands.map((cmd, index) => `
+    <div class="command-option" onclick="executeCommand('${cmd.replace(/'/g, "\\'")}')">
+      <div class="command-number">${index + 1}</div>
+      <div class="command-text">${escapeHtml(cmd)}</div>
+    </div>
+  `).join('');
+  
+  messageDiv.innerHTML = `
+    <div class="message-content">
+      为你生成了以下命令，点击数字执行：
+      <div class="command-options">
+        ${optionsHtml}
+      </div>
+    </div>
+  `;
+  
+  chatMessages.appendChild(messageDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+async function executeCommand(command) {
+  if (!confirm(`确定要执行以下命令吗？\n\n${command}`)) {
+    return;
+  }
+  
+  addMessage('user', `执行命令: ${command}`);
+  
+  try {
+    const result = await window.electronAPI.executeCommand(command);
+    if (result.success) {
+      addMessage('ai', `执行成功:\n${result.output}`);
+    } else {
+      addMessage('ai', `执行失败: ${result.message}`);
+    }
+  } catch (error) {
+    addMessage('ai', `执行错误: ${error.message}`);
+  }
+}
+
+function setQuickQuestion(question) {
+  chatInput.value = question;
+  chatInput.focus();
+}
+
 // Docker 控制功能
-stopDockerBtn.addEventListener('click', async () => {
+async function handleStopDocker() {
   if (!confirm('确定要停止 Docker 服务吗？所有运行中的容器将被停止。')) {
     return;
   }
   
-  stopDockerBtn.disabled = true;
-  restartDockerBtn.disabled = true;
+  if (stopDockerBtn) stopDockerBtn.disabled = true;
+  if (restartDockerBtn) restartDockerBtn.disabled = true;
   showToast('正在停止 Docker...', 'success');
   updateDockerStatus('stopping', '正在停止...');
   
@@ -413,10 +709,8 @@ stopDockerBtn.addEventListener('click', async () => {
     if (result.success) {
       showToast(result.message, 'success');
       updateDockerStatus('stopped', 'Docker 已停止');
-      // 延迟后再次检查状态
       setTimeout(() => checkDockerStatus(), 2000);
     } else {
-      // 即使失败，也可能是因为 Docker 本来就没运行
       showToast(result.message, 'success');
       updateDockerStatus('stopped', 'Docker 未运行');
       setTimeout(() => checkDockerStatus(), 2000);
@@ -425,18 +719,18 @@ stopDockerBtn.addEventListener('click', async () => {
     showToast('操作失败: ' + error.message, 'error');
     setTimeout(() => checkDockerStatus(), 2000);
   } finally {
-    stopDockerBtn.disabled = false;
-    restartDockerBtn.disabled = false;
+    if (stopDockerBtn) stopDockerBtn.disabled = false;
+    if (restartDockerBtn) restartDockerBtn.disabled = false;
   }
-});
+}
 
-restartDockerBtn.addEventListener('click', async () => {
+async function handleRestartDocker() {
   if (!confirm('确定要重启 Docker 服务吗？这可能需要 30-60 秒时间。')) {
     return;
   }
   
-  restartDockerBtn.disabled = true;
-  stopDockerBtn.disabled = true;
+  if (restartDockerBtn) restartDockerBtn.disabled = true;
+  if (stopDockerBtn) stopDockerBtn.disabled = true;
   showToast('正在重启 Docker...', 'success');
   updateDockerStatus('restarting', '正在重启...');
   
@@ -444,9 +738,8 @@ restartDockerBtn.addEventListener('click', async () => {
     const result = await window.electronAPI.restartDocker();
     if (result.success) {
       showToast(result.message, 'success');
-      // 等待 Docker 完全启动，定期检查状态
       let attempts = 0;
-      const maxAttempts = 12; // 最多等待 60 秒
+      const maxAttempts = 12;
       
       const checkInterval = setInterval(async () => {
         attempts++;
@@ -456,14 +749,14 @@ restartDockerBtn.addEventListener('click', async () => {
           clearInterval(checkInterval);
           updateDockerStatus('running', 'Docker 运行中');
           showToast('Docker 已成功启动', 'success');
-          restartDockerBtn.disabled = false;
-          stopDockerBtn.disabled = false;
+          if (restartDockerBtn) restartDockerBtn.disabled = false;
+          if (stopDockerBtn) stopDockerBtn.disabled = false;
         } else if (attempts >= maxAttempts) {
           clearInterval(checkInterval);
           updateDockerStatus('unknown', 'Docker 启动超时，请手动检查');
           showToast('Docker 启动超时，请手动检查', 'error');
-          restartDockerBtn.disabled = false;
-          stopDockerBtn.disabled = false;
+          if (restartDockerBtn) restartDockerBtn.disabled = false;
+          if (stopDockerBtn) stopDockerBtn.disabled = false;
         } else {
           updateDockerStatus('restarting', `正在启动... (${attempts * 5}s)`);
         }
@@ -471,20 +764,20 @@ restartDockerBtn.addEventListener('click', async () => {
     } else {
       showToast('重启失败: ' + result.message, 'error');
       updateDockerStatus('unknown', '状态未知');
-      restartDockerBtn.disabled = false;
-      stopDockerBtn.disabled = false;
+      if (restartDockerBtn) restartDockerBtn.disabled = false;
+      if (stopDockerBtn) stopDockerBtn.disabled = false;
     }
   } catch (error) {
     showToast('重启失败: ' + error.message, 'error');
     updateDockerStatus('unknown', '状态未知');
-    restartDockerBtn.disabled = false;
-    stopDockerBtn.disabled = false;
+    if (restartDockerBtn) restartDockerBtn.disabled = false;
+    if (stopDockerBtn) stopDockerBtn.disabled = false;
   }
-});
+}
 
 function updateDockerStatus(status, text) {
-  dockerStatus.className = `status-indicator ${status}`;
-  dockerStatusText.textContent = text;
+  if (dockerStatus) dockerStatus.className = `status-indicator ${status}`;
+  if (dockerStatusText) dockerStatusText.textContent = text;
 }
 
 // 检查 Docker 状态
@@ -508,4 +801,73 @@ async function checkDockerStatus() {
   }
 }
 
-loadInstalledApps();
+// 初始化应用
+function initApp() {
+  console.log('Initializing app...');
+  
+  // 初始化 Docker 元素
+  initDockerElements();
+  
+  // 添加事件监听器
+  if (diskSizeSlider) {
+    diskSizeSlider.addEventListener('input', (e) => {
+      if (diskValue) diskValue.textContent = e.target.value;
+    });
+  }
+  
+  if (memorySizeSlider) {
+    memorySizeSlider.addEventListener('input', (e) => {
+      if (memoryValue) memoryValue.textContent = e.target.value;
+    });
+  }
+  
+  if (cpuCoresSlider) {
+    cpuCoresSlider.addEventListener('input', (e) => {
+      if (cpuValue) cpuValue.textContent = e.target.value;
+    });
+  }
+  
+  // 保存 Docker 配置
+  if (saveDockerConfigBtn) {
+    saveDockerConfigBtn.addEventListener('click', () => {
+      const config = {
+        diskSize: parseInt(diskSizeSlider?.value || 64),
+        memory: parseInt(memorySizeSlider?.value || 4),
+        cpus: parseInt(cpuCoresSlider?.value || 2),
+        registryMirror: registryMirror?.value || '',
+        experimental: enableExperimental?.checked || false,
+        buildKit: enableBuildKit?.checked !== false
+      };
+      
+      saveDockerConfig(config);
+    });
+  }
+  
+  // 重置 Docker 配置
+  if (resetDockerConfigBtn) {
+    resetDockerConfigBtn.addEventListener('click', () => {
+      if (confirm('确定要重置为默认配置吗？')) {
+        resetDockerConfigToDefault();
+      }
+    });
+  }
+  
+  // Docker 控制按钮
+  if (stopDockerBtn) {
+    stopDockerBtn.addEventListener('click', handleStopDocker);
+  }
+  
+  if (restartDockerBtn) {
+    restartDockerBtn.addEventListener('click', handleRestartDocker);
+  }
+  
+  // 加载应用数据
+  loadInstalledApps();
+}
+
+// 确保 DOM 完全加载后再初始化
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}

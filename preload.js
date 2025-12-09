@@ -8,5 +8,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateApp: (appName) => ipcRenderer.invoke('update-app', appName),
   stopDocker: () => ipcRenderer.invoke('stop-docker'),
   restartDocker: () => ipcRenderer.invoke('restart-docker'),
-  checkDockerStatus: () => ipcRenderer.invoke('check-docker-status')
+  checkDockerStatus: () => ipcRenderer.invoke('check-docker-status'),
+  getContainers: () => ipcRenderer.invoke('get-containers'),
+  startContainer: (containerId) => ipcRenderer.invoke('start-container', containerId),
+  stopContainer: (containerId) => ipcRenderer.invoke('stop-container', containerId),
+  removeContainer: (containerId) => ipcRenderer.invoke('remove-container', containerId),
+  askAI: (question, config) => ipcRenderer.invoke('ask-ai', question, config),
+  executeCommand: (command) => ipcRenderer.invoke('execute-command', command)
 });

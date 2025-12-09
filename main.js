@@ -1,12 +1,21 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 const Database = require('better-sqlite3');
 
+// 导入 fetch（Node.js 18+ 内置，较低版本需要 polyfill）
+let fetch;
+try {
+  fetch = globalThis.fetch;
+} catch {
+  fetch = require('node-fetch');
+}
+
 let mainWindow;
 let db;
+let tray;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -21,6 +30,29 @@ function createWindow() {
   });
 
   mainWindow.loadFile('index.html');
+
+  // 处理窗口关闭事件
+  mainWindow.on('close', (event) => {
+    if (!app.isQuiting) {
+      event.preventDefault();
+      mainWindow.hide();
+      
+      // 首次最小化到托盘时显示提示
+      if (!tray.isDestroyed()) {
+        tray.displayBalloon({
+          iconType: 'info',
+          title: 'Scoop Manager',
+          content: '应用已最小化到系统托盘，点击托盘图标可重新打开'
+        });
+      }
+    }
+  });
+
+  // 处理窗口最小化
+  mainWindow.on('minimize', (event) => {
+    event.preventDefault();
+    mainWindow.hide();
+  });
 }
 
 function initDatabase() {
@@ -38,6 +70,66 @@ function initDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+}
+
+function createTray() {
+  // 创建紫色方块托盘图标
+  const image = nativeImage.createFromBuffer(
+    Buffer.from([
+      // 16x16 紫色方块的RGBA像素数据
+      ...Array(16 * 16).fill(0).flatMap(() => [139, 92, 246, 255]) // 紫色 #8b5cf6
+    ]), 
+    { width: 16, height: 16 }
+  );
+  
+  tray = new Tray(image);
+  
+  // 设置托盘提示文本
+  tray.setToolTip('Scoop Manager');
+  
+  // 创建托盘菜单
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '显示主窗口',
+      click: () => {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    },
+    {
+      label: '隐藏窗口',
+      click: () => {
+        mainWindow.hide();
+      }
+    },
+    { type: 'separator' },
+    {
+      label: '退出',
+      click: () => {
+        app.isQuiting = true;
+        app.quit();
+      }
+    }
+  ]);
+  
+  // 设置托盘菜单
+  tray.setContextMenu(contextMenu);
+  
+  // 托盘图标点击事件
+  tray.on('click', () => {
+    if (mainWindow.isVisible()) {
+      mainWindow.hide();
+    } else {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+  
+  // 托盘图标双击事件
+  tray.on('double-click', () => {
+    mainWindow.show();
+    mainWindow.focus();
+  });
 }
 
 async function getScoopApps() {
@@ -247,20 +339,221 @@ ipcMain.handle('check-docker-status', async () => {
   }
 });
 
+ipcMain.handle('get-containers', async () => {
+  try {
+    // 使用 JSON 格式获取容器信息，避免编码问题
+    const { stdout } = await execPromise('docker ps -a --format "{{json .}}"', {
+      encoding: 'utf8'
+    });
+    
+    if (!stdout.trim()) {
+      return { success: true, containers: [] };
+    }
+    
+    const lines = stdout.trim().split('\n');
+    const containers = lines.map(line => {
+      try {
+        const container = JSON.parse(line);
+        return {
+          id: container.ID || container.id,
+          name: container.Names || container.names,
+          status: (container.Status || container.status).toLowerCase().includes('up') ? 'running' : 'exited',
+          image: container.Image || container.image,
+          ports: container.Ports || container.ports || '-',
+          created: container.CreatedAt || container.created,
+          command: container.Command || container.command
+        };
+      } catch (e) {
+        return null;
+      }
+    }).filter(Boolean);
+    
+    return { success: true, containers };
+  } catch (error) {
+    // 如果 Docker 未运行，返回空列表而不是错误
+    if (error.message.includes('Cannot connect to the Docker daemon')) {
+      return { success: true, containers: [], message: 'Docker 未运行' };
+    }
+    return { success: false, containers: [], message: error.message };
+  }
+});
+
+ipcMain.handle('start-container', async (event, containerId) => {
+  try {
+    const { stdout } = await execPromise(`docker start ${containerId}`);
+    return { success: true, message: stdout };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('stop-container', async (event, containerId) => {
+  try {
+    const { stdout } = await execPromise(`docker stop ${containerId}`);
+    return { success: true, message: stdout };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('remove-container', async (event, containerId) => {
+  try {
+    const { stdout } = await execPromise(`docker rm ${containerId}`);
+    return { success: true, message: stdout };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('ask-ai', async (event, question, config) => {
+  try {
+    const prompt = config.promptTemplate.replace('{question}', question);
+    
+    const response = await fetch(config.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    // 解析命令（按行分割）
+    let commands = content.split('\n')
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('#') && !line.startsWith('//'))
+      .slice(0, 3); // 最多3条命令
+    
+    // 过滤和清理命令
+    commands = commands.map(cmd => {
+      // 移除命令前的数字编号
+      cmd = cmd.replace(/^\d+[\.\)]\s*/, '');
+      // 移除 markdown 代码块标记
+      cmd = cmd.replace(/^```\w*\s*/, '').replace(/```$/, '');
+      return cmd.trim();
+    }).filter(cmd => {
+      // 过滤空命令和过短命令
+      if (!cmd || cmd.length < 3) return false;
+      // 过滤包含敏感信息的命令
+      if (cmd.includes('password') || cmd.includes('--password')) return false;
+      return true;
+    });
+    
+    return { success: true, commands };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('execute-command', async (event, command) => {
+  try {
+    // 安全检查：过滤危险命令
+    const dangerousPatterns = [
+      /rm\s+-rf/i,
+      /del\s+\/[sq]/i,
+      /format\s+/i,
+      /shutdown\s+/i,
+      /restart\s+/i,
+      /--password=/i,
+      /passwd/i,
+      /sudo\s+/i,
+      /net\s+user.*\/add/i
+    ];
+    
+    const isDangerous = dangerousPatterns.some(pattern => pattern.test(command));
+    if (isDangerous) {
+      return { success: false, message: '检测到潜在危险命令，已阻止执行' };
+    }
+    
+    // 限制命令长度
+    if (command.length > 200) {
+      return { success: false, message: '命令过长，已阻止执行' };
+    }
+    
+    const { stdout, stderr } = await execPromise(command, { 
+      timeout: 30000,
+      maxBuffer: 1024 * 1024, // 1MB 输出限制
+      encoding: 'utf8',
+      env: { ...process.env, CHCP: '65001' } // 设置 UTF-8 编码
+    });
+    
+    let output = stdout || stderr || '命令执行完成';
+    
+    // 尝试修复中文乱码
+    try {
+      // 如果是 Windows 系统，尝试转换编码
+      if (process.platform === 'win32' && output.includes('�')) {
+        // 使用 PowerShell 重新执行命令以获得正确编码
+        const psCommand = `powershell -Command "& {${command}}"`;
+        const { stdout: psStdout } = await execPromise(psCommand, {
+          timeout: 30000,
+          encoding: 'utf8'
+        });
+        output = psStdout || output;
+      }
+    } catch (e) {
+      // 如果转换失败，使用原输出
+    }
+    
+    // 限制输出长度
+    if (output.length > 2000) {
+      output = output.substring(0, 2000) + '\n... (输出已截断)';
+    }
+    
+    return { success: true, output };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
 app.whenReady().then(() => {
   initDatabase();
   createWindow();
+  createTray();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
+    } else {
+      mainWindow.show();
+      mainWindow.focus();
     }
   });
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    db.close();
+  // 在 Windows 上，即使所有窗口都关闭了，也保持应用运行（托盘模式）
+  if (process.platform === 'darwin') {
     app.quit();
+  }
+});
+
+app.on('before-quit', () => {
+  app.isQuiting = true;
+});
+
+app.on('will-quit', () => {
+  if (db) {
+    db.close();
+  }
+  if (tray && !tray.isDestroyed()) {
+    tray.destroy();
   }
 });

@@ -1,5 +1,5 @@
 # Scoop Manager
-![alt text](image.png)
+
 <div align="center">
 
 ![Scoop Manager](https://img.shields.io/badge/Scoop-Manager-7c3aed?style=for-the-badge)
@@ -11,7 +11,7 @@
 [功能特性](#功能特性) • [安装](#安装) • [使用](#使用) • [截图](#截图) • [技术栈](#技术栈)
 
 </div>
-
+![alt text](image.png)
 ---
 
 ## ✨ 功能特性

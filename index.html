@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scoop Manager</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <path d="M20 7h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 4h4v3h-4V4zm10 16H4V9h16v11z" fill="#a78bfa"/>
+        </svg>
+        <h1>Scoop Manager</h1>
+      </div>
+      
+      <nav class="nav">
+        <button class="nav-item active" data-view="installed">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z" fill="currentColor"/>
+          </svg>
+          已安装应用
+        </button>
+        <button class="nav-item" data-view="available">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+          </svg>
+          浏览可用程序
+        </button>
+        <button class="nav-item" data-view="docker" id="dockerNavItem" style="display: none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M20.5 10.5h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v2h2v2h-2v2h2v2h2v-2h2v-2h2v2h2v-2h2v2h2v-2h2v-2h-2v-2h2v-2z" fill="currentColor"/>
+          </svg>
+          Docker 配置
+        </button>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="search-bar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="#6b7280"/>
+          </svg>
+          <input type="text" id="searchInput" placeholder="搜索应用...">
+        </div>
+        <button class="btn-refresh" id="refreshBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
+          </svg>
+          刷新
+        </button>
+      </header>
+
+      <div id="installedView" class="view active">
+        <h2 class="view-title">已安装的应用</h2>
+        <div id="installedApps" class="apps-grid"></div>
+      </div>
+
+      <div id="availableView" class="view">
+        <h2 class="view-title">浏览可用程序</h2>
+        <div id="availableApps" class="apps-grid"></div>
+      </div>
+
+      <div id="dockerView" class="view">
+        <h2 class="view-title">Docker 配置</h2>
+        <div class="docker-config">
+          <div class="config-section">
+            <h3 class="config-section-title">资源配置</h3>
+            
+            <div class="config-item">
+              <label class="config-label">
+                <span>磁盘大小 (GB)</span>
+                <span class="config-value" id="diskValue">64</span>
+              </label>
+              <input type="range" id="diskSize" min="20" max="200" value="64" step="1" class="config-slider">
+              <div class="config-range">
+                <span>20 GB</span>
+                <span>200 GB</span>
+              </div>
+            </div>
+
+            <div class="config-item">
+              <label class="config-label">
+                <span>内存大小 (GB)</span>
+                <span class="config-value" id="memoryValue">4</span>
+              </label>
+              <input type="range" id="memorySize" min="1" max="32" value="4" step="1" class="config-slider">
+              <div class="config-range">
+                <span>1 GB</span>
+                <span>32 GB</span>
+              </div>
+            </div>
+
+            <div class="config-item">
+              <label class="config-label">
+                <span>CPU 核心数</span>
+                <span class="config-value" id="cpuValue">2</span>
+              </label>
+              <input type="range" id="cpuCores" min="1" max="16" value="2" step="1" class="config-slider">
+              <div class="config-range">
+                <span>1 核</span>
+                <span>16 核</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="config-section">
+            <h3 class="config-section-title">镜像加速</h3>
+            
+            <div class="config-item">
+              <label class="config-label">
+                <span>选择镜像仓库</span>
+              </label>
+              <select id="registryMirror" class="config-select">
+                <option value="">不使用镜像加速</option>
+                <option value="https://docker.mirrors.ustc.edu.cn">中科大镜像</option>
+                <option value="https://hub-mirror.c.163.com">网易镜像</option>
+                <option value="https://mirror.ccs.tencentyun.com">腾讯云镜像</option>
+                <option value="https://registry.docker-cn.com">Docker 中国镜像</option>
+                <option value="https://dockerproxy.com">DockerProxy</option>
+              </select>
+            </div>
+
+            <div class="config-item">
+              <label class="config-checkbox">
+                <input type="checkbox" id="enableExperimental">
+                <span>启用实验性功能</span>
+              </label>
+            </div>
+
+            <div class="config-item">
+              <label class="config-checkbox">
+                <input type="checkbox" id="enableBuildKit" checked>
+                <span>启用 BuildKit</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="config-actions">
+            <button class="btn btn-secondary" id="resetDockerConfig">重置为默认</button>
+            <button class="btn btn-primary" id="saveDockerConfig">保存配置</button>
+          </div>
+
+          <div class="config-section">
+            <h3 class="config-section-title">Docker 服务控制</h3>
+            
+            <div class="docker-controls">
+              <button class="btn btn-danger" id="stopDockerBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M6 6h12v12H6z" fill="currentColor"/>
+                </svg>
+                停止 Docker
+              </button>
+              <button class="btn btn-secondary" id="restartDockerBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
+                </svg>
+                重启 Docker
+              </button>
+              <div class="docker-status">
+                <span class="status-indicator" id="dockerStatus"></span>
+                <span id="dockerStatusText">检查中...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

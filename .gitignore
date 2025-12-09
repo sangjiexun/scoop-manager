@@ -1,0 +1,20 @@
+node_modules/
+*.db
+*.log
+dist/
+.DS_Store
+pnpm-lock.yaml
+package-lock.json
+
+# Electron build output
+out/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+*.swp
+*.swo

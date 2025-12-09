@@ -1,0 +1,581 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: #1e1e2e;
+  color: #e0e0e0;
+  overflow: hidden;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background: #181825;
+  border-right: 1px solid #2a2a3e;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+  padding: 0 8px;
+}
+
+.logo h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #a78bfa;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: #2a2a3e;
+  color: #e0e0e0;
+}
+
+.nav-item.active {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  padding: 24px 32px;
+  background: #181825;
+  border-bottom: 1px solid #2a2a3e;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.search-bar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #1e1e2e;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  padding: 10px 16px;
+}
+
+.search-bar input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e0e0e0;
+  font-size: 14px;
+}
+
+.search-bar input::placeholder {
+  color: #6b7280;
+}
+
+.btn-refresh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #7c3aed;
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-refresh:hover {
+  background: #6d28d9;
+}
+
+.view {
+  display: none;
+  flex-direction: column;
+  padding: 32px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.view.active {
+  display: flex;
+}
+
+.view-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: #e0e0e0;
+}
+
+.apps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.app-card {
+  background: #181825;
+  border: 1px solid #2a2a3e;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s;
+}
+
+.app-card:hover {
+  border-color: #7c3aed;
+  transform: translateY(-2px);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.app-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.app-info {
+  flex: 1;
+}
+
+.app-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 4px;
+}
+
+.app-version {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.app-description {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.app-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #6d28d9;
+}
+
+.btn-secondary {
+  background: #2a2a3e;
+  color: #e0e0e0;
+}
+
+.btn-secondary:hover {
+  background: #3a3a4e;
+}
+
+.btn-danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 16px 24px;
+  background: #181825;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 14px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.toast.success {
+  border-color: #10b981;
+}
+
+.toast.error {
+  border-color: #dc2626;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e2e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a3e;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4e;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #9ca3af;
+}
+
+/* Docker 配置样式 */
+.docker-config {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.config-section {
+  background: #181825;
+  border: 1px solid #2a2a3e;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.config-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #2a2a3e;
+}
+
+.config-item {
+  margin-bottom: 32px;
+}
+
+.config-item:last-child {
+  margin-bottom: 0;
+}
+
+.config-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #e0e0e0;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.config-value {
+  color: #a78bfa;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.config-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #2a2a3e;
+  outline: none;
+  -webkit-appearance: none;
+  margin-bottom: 8px;
+}
+
+.config-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #7c3aed;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.config-slider::-webkit-slider-thumb:hover {
+  background: #6d28d9;
+  transform: scale(1.1);
+}
+
+.config-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #7c3aed;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.config-slider::-moz-range-thumb:hover {
+  background: #6d28d9;
+  transform: scale(1.1);
+}
+
+.config-range {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.config-select {
+  width: 100%;
+  padding: 12px 16px;
+  background: #1e1e2e;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.config-select:hover {
+  border-color: #7c3aed;
+}
+
+.config-select:focus {
+  border-color: #7c3aed;
+}
+
+.config-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.config-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #7c3aed;
+}
+
+.config-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+  margin-top: 32px;
+}
+
+.config-actions .btn {
+  min-width: 120px;
+}
+
+/* Docker 控制按钮 */
+.docker-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.docker-controls .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.docker-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #1e1e2e;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #6b7280;
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.running {
+  background: #10b981;
+}
+
+.status-indicator.stopped {
+  background: #dc2626;
+}
+
+.status-indicator.checking {
+  background: #f59e0b;
+}
+
+.status-indicator.restarting {
+  background: #f59e0b;
+}
+
+.status-indicator.stopping {
+  background: #f59e0b;
+}
+
+.status-indicator.unknown {
+  background: #6b7280;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* 进度条样式 */
+.progress-container {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #2a2a3e;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #2a2a3e;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed 0%, #a78bfa 100%);
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s ease;
+  animation: progressAnimation 1.5s infinite;
+}
+
+@keyframes progressAnimation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.progress-fill.indeterminate {
+  width: 100%;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    #7c3aed 25%, 
+    #a78bfa 50%, 
+    #7c3aed 75%, 
+    transparent 100%);
+  background-size: 200% 100%;
+  animation: indeterminateProgress 1.5s linear infinite;
+}
+
+@keyframes indeterminateProgress {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #9ca3af;
+  text-align: center;
+}

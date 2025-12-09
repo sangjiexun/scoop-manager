@@ -1,0 +1,58 @@
+{
+  "name": "scoop-manager",
+  "version": "1.0.0",
+  "description": "Scoop 包管理器可视化工具",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win --x64",
+    "build:dir": "electron-builder --win --x64 --dir"
+  },
+  "keywords": [
+    "scoop",
+    "package-manager",
+    "electron"
+  ],
+  "author": "",
+  "license": "MIT",
+  "build": {
+    "appId": "com.scoopmanager.app",
+    "productName": "Scoop Manager",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/**/*",
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/file-uri-to-path/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/file-uri-to-path/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "signtoolOptions": null
+    },
+    "portable": {
+      "artifactName": "ScoopManager-Portable.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^26.0.12",
+    "electron-rebuild": "^3.2.9"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.2.2"
+  }
+}

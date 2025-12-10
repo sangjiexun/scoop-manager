@@ -54,6 +54,9 @@ function switchView(viewName) {
   } else if (viewName === 'containers') {
     loadContainers();
     startContainerAutoRefresh();
+  } else if (viewName === 'database') {
+    stopContainerAutoRefresh();
+    loadDatabaseView();
   } else if (viewName === 'console') {
     stopContainerAutoRefresh();
     loadConsoleConfig();
@@ -863,6 +866,563 @@ function initApp() {
   
   // 加载应用数据
   loadInstalledApps();
+}
+
+// 数据库管理功能
+let currentDatabaseCategory = 'relational';
+let databases = {
+  relational: [
+    {
+      name: 'MySQL',
+      version: '8.0',
+      description: '世界上最流行的开源关系数据库',
+      icon: 'M',
+      installed: false,
+      running: false,
+      port: 3306,
+      config: {}
+    },
+    {
+      name: 'PostgreSQL',
+      version: '15.0',
+      description: '世界上最先进的开源关系数据库',
+      icon: 'P',
+      installed: false,
+      running: false,
+      port: 5432,
+      config: {}
+    },
+    {
+      name: 'SQLite',
+      version: '3.40',
+      description: '轻量级的嵌入式SQL数据库引擎',
+      icon: 'S',
+      installed: false,
+      running: false,
+      port: null,
+      config: {}
+    },
+    {
+      name: 'MariaDB',
+      version: '10.9',
+      description: 'MySQL的开源分支，完全兼容MySQL',
+      icon: 'M',
+      installed: false,
+      running: false,
+      port: 3306,
+      config: {}
+    }
+  ],
+  nosql: [
+    {
+      name: 'MongoDB',
+      version: '6.0',
+      description: '面向文档的NoSQL数据库',
+      icon: 'M',
+      installed: false,
+      running: false,
+      port: 27017,
+      config: {}
+    },
+    {
+      name: 'Redis',
+      version: '7.0',
+      description: '内存中的数据结构存储',
+      icon: 'R',
+      installed: false,
+      running: false,
+      port: 6379,
+      config: {}
+    },
+    {
+      name: 'CouchDB',
+      version: '3.2',
+      description: 'Apache CouchDB文档数据库',
+      icon: 'C',
+      installed: false,
+      running: false,
+      port: 5984,
+      config: {}
+    },
+    {
+      name: 'Cassandra',
+      version: '4.0',
+      description: 'Apache Cassandra分布式数据库',
+      icon: 'C',
+      installed: false,
+      running: false,
+      port: 9042,
+      config: {}
+    }
+  ],
+  graph: [
+    {
+      name: 'Neo4j',
+      version: '5.0',
+      description: '领先的图数据库',
+      icon: 'N',
+      installed: false,
+      running: false,
+      port: 7474,
+      config: {}
+    },
+    {
+      name: 'ArangoDB',
+      version: '3.9',
+      description: '多模型数据库（文档、图、键值）',
+      icon: 'A',
+      installed: false,
+      running: false,
+      port: 8529,
+      config: {}
+    }
+  ],
+  blockchain: [
+    {
+      name: 'IPFS',
+      version: '0.17',
+      description: '分布式文件系统',
+      icon: 'I',
+      installed: false,
+      running: false,
+      port: 5001,
+      config: {}
+    },
+    {
+      name: 'Ethereum',
+      version: '1.10',
+      description: '以太坊节点客户端',
+      icon: 'E',
+      installed: false,
+      running: false,
+      port: 8545,
+      config: {}
+    }
+  ]
+};
+
+// 数据库配置弹窗元素
+const databaseConfigModal = document.getElementById('databaseConfigModal');
+const closeDatabaseConfigModal = document.getElementById('closeDatabaseConfigModal');
+const cancelDatabaseConfig = document.getElementById('cancelDatabaseConfig');
+const saveDatabaseConfig = document.getElementById('saveDatabaseConfig');
+const dbConfigTitle = document.getElementById('dbConfigTitle');
+
+// 数据库配置表单元素
+const dbName = document.getElementById('dbName');
+const dbPort = document.getElementById('dbPort');
+const dbDataPath = document.getElementById('dbDataPath');
+const dbAutoStart = document.getElementById('dbAutoStart');
+const dbRootUser = document.getElementById('dbRootUser');
+const dbRootPassword = document.getElementById('dbRootPassword');
+const dbEnableAuth = document.getElementById('dbEnableAuth');
+const generatePassword = document.getElementById('generatePassword');
+const dbMaxConnections = document.getElementById('dbMaxConnections');
+const dbCacheSize = document.getElementById('dbCacheSize');
+const dbLogLevel = document.getElementById('dbLogLevel');
+const dbEnableSSL = document.getElementById('dbEnableSSL');
+
+let currentConfigDatabase = null;
+
+// 设置功能
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+const closeSettingsModal = document.getElementById('closeSettingsModal');
+const cancelSettings = document.getElementById('cancelSettings');
+const saveSettings = document.getElementById('saveSettings');
+const autoStartToggle = document.getElementById('autoStartToggle');
+const startMinimizedToggle = document.getElementById('startMinimizedToggle');
+const closeToTrayToggle = document.getElementById('closeToTrayToggle');
+
+// 设置按钮点击事件
+settingsBtn.addEventListener('click', () => {
+  loadSettings();
+  settingsModal.classList.add('show');
+});
+
+// 关闭弹窗事件
+closeSettingsModal.addEventListener('click', closeSettingsModalHandler);
+cancelSettings.addEventListener('click', closeSettingsModalHandler);
+
+// 点击弹窗外部关闭
+settingsModal.addEventListener('click', (e) => {
+  if (e.target === settingsModal) {
+    closeSettingsModalHandler();
+  }
+});
+
+// ESC键关闭弹窗
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && settingsModal.classList.contains('show')) {
+    closeSettingsModalHandler();
+  }
+});
+
+function closeSettingsModalHandler() {
+  settingsModal.classList.remove('show');
+}
+
+// 保存设置
+saveSettings.addEventListener('click', async () => {
+  const settings = {
+    autoStart: autoStartToggle.checked,
+    startMinimized: startMinimizedToggle.checked,
+    closeToTray: closeToTrayToggle.checked
+  };
+  
+  try {
+    const result = await window.electronAPI.saveSettings(settings);
+    if (result.success) {
+      showToast('设置已保存', 'success');
+      closeSettingsModalHandler();
+    } else {
+      showToast('保存设置失败: ' + result.message, 'error');
+    }
+  } catch (error) {
+    showToast('保存设置失败: ' + error.message, 'error');
+  }
+});
+
+// 加载设置
+async function loadSettings() {
+  try {
+    const settings = await window.electronAPI.getSettings();
+    autoStartToggle.checked = settings.autoStart || false;
+    startMinimizedToggle.checked = settings.startMinimized || false;
+    closeToTrayToggle.checked = settings.closeToTray !== false; // 默认为true
+  } catch (error) {
+    console.error('加载设置失败:', error);
+    // 使用默认设置
+    autoStartToggle.checked = false;
+    startMinimizedToggle.checked = false;
+    closeToTrayToggle.checked = true;
+  }
+}
+
+// 数据库管理功能
+function loadDatabaseView() {
+  // 初始化数据库分类按钮
+  const categoryBtns = document.querySelectorAll('.category-btn');
+  categoryBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const category = btn.dataset.category;
+      switchDatabaseCategory(category);
+    });
+  });
+
+  // 初始化数据库配置弹窗
+  initDatabaseConfigModal();
+  
+  // 加载当前分类的数据库
+  renderDatabases(currentDatabaseCategory);
+}
+
+function switchDatabaseCategory(category) {
+  currentDatabaseCategory = category;
+  
+  // 更新分类按钮状态
+  document.querySelectorAll('.category-btn').forEach(btn => {
+    if (btn.dataset.category === category) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  
+  // 更新数据库分类显示
+  document.querySelectorAll('.database-category').forEach(cat => {
+    if (cat.id === `${category}-databases`) {
+      cat.classList.add('active');
+    } else {
+      cat.classList.remove('active');
+    }
+  });
+  
+  // 渲染数据库列表
+  renderDatabases(category);
+}
+
+async function renderDatabases(category) {
+  const container = document.getElementById(`${category}Grid`);
+  if (!container) return;
+  
+  const databaseList = databases[category] || [];
+  
+  // 检查已安装数据库的运行状态
+  for (const db of databaseList) {
+    if (db.installed) {
+      try {
+        const status = await window.electronAPI.checkDatabaseStatus(db.name);
+        db.running = status.running;
+      } catch (error) {
+        console.error(`检查 ${db.name} 状态失败:`, error);
+      }
+    }
+  }
+  
+  container.innerHTML = databaseList.map(db => {
+    const statusClass = db.installed ? (db.running ? 'running' : 'stopped') : 'available';
+    const statusText = db.installed ? (db.running ? '运行中' : '已停止') : '可安装';
+    
+    return `
+      <div class="database-card ${db.installed ? 'installed' : ''}" data-db="${db.name.toLowerCase()}">
+        <div class="database-status ${statusClass}">${statusText}</div>
+        <div class="database-header">
+          <div class="database-icon ${db.name.toLowerCase()}">${db.icon}</div>
+          <div class="database-info">
+            <div class="database-name">${db.name}</div>
+            <div class="database-version">v${db.version}</div>
+          </div>
+        </div>
+        <div class="database-description">${db.description}</div>
+        <div class="database-actions">
+          ${db.installed ? `
+            <button class="btn ${db.running ? 'btn-danger' : 'btn-primary'}" onclick="${db.running ? 'stopDatabase' : 'startDatabase'}('${db.name}', '${category}')">
+              ${db.running ? '停止' : '启动'}
+            </button>
+            <button class="btn btn-secondary" onclick="configureDatabase('${db.name}', '${category}')">配置</button>
+            <button class="btn btn-danger" onclick="uninstallDatabase('${db.name}', '${category}')">卸载</button>
+          ` : `
+            <button class="btn btn-primary" onclick="installDatabase('${db.name}', '${category}')">安装</button>
+          `}
+        </div>
+        ${db.installed ? `
+          <div class="database-config">
+            <div class="config-row">
+              <span>端口:</span>
+              <span>${db.port || 'N/A'}</span>
+            </div>
+            <div class="config-row">
+              <span>用户:</span>
+              <span>${db.config.rootUser || 'root'}</span>
+            </div>
+            <div class="connection-status">
+              <div class="connection-indicator ${db.running ? 'connected' : 'disconnected'}"></div>
+              <span>${db.running ? '已连接' : '未连接'}</span>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+async function installDatabase(dbName, category) {
+  const db = databases[category].find(d => d.name === dbName);
+  if (!db) return;
+  
+  showToast(`正在安装 ${dbName}...`, 'success');
+  
+  try {
+    // 这里可以调用实际的安装命令
+    const result = await window.electronAPI.installDatabase(dbName.toLowerCase(), category);
+    
+    if (result.success) {
+      db.installed = true;
+      db.config = {
+        rootUser: 'root',
+        rootPassword: generateRandomPassword(),
+        port: db.port,
+        autoStart: false,
+        enableAuth: true,
+        maxConnections: 100,
+        cacheSize: 256,
+        logLevel: 'info',
+        enableSSL: false
+      };
+      
+      showToast(`${dbName} 安装成功`, 'success');
+      renderDatabases(category);
+    } else {
+      showToast(`安装失败: ${result.message}`, 'error');
+    }
+  } catch (error) {
+    showToast(`安装失败: ${error.message}`, 'error');
+  }
+}
+
+async function uninstallDatabase(dbName, category) {
+  if (!confirm(`确定要卸载 ${dbName} 吗？这将删除所有数据！`)) {
+    return;
+  }
+  
+  const db = databases[category].find(d => d.name === dbName);
+  if (!db) return;
+  
+  showToast(`正在卸载 ${dbName}...`, 'success');
+  
+  try {
+    const result = await window.electronAPI.uninstallDatabase(dbName.toLowerCase(), category);
+    
+    if (result.success) {
+      db.installed = false;
+      db.running = false;
+      db.config = {};
+      
+      showToast(`${dbName} 卸载成功`, 'success');
+      renderDatabases(category);
+    } else {
+      showToast(`卸载失败: ${result.message}`, 'error');
+    }
+  } catch (error) {
+    showToast(`卸载失败: ${error.message}`, 'error');
+  }
+}
+
+async function startDatabase(dbName, category) {
+  const db = databases[category].find(d => d.name === dbName);
+  if (!db) return;
+  
+  showToast(`正在启动 ${dbName}...`, 'success');
+  
+  try {
+    const result = await window.electronAPI.startDatabase(dbName.toLowerCase(), category);
+    
+    if (result.success) {
+      db.running = true;
+      showToast(`${dbName} 启动成功`, 'success');
+      renderDatabases(category);
+    } else {
+      showToast(`启动失败: ${result.message}`, 'error');
+    }
+  } catch (error) {
+    showToast(`启动失败: ${error.message}`, 'error');
+  }
+}
+
+async function stopDatabase(dbName, category) {
+  const db = databases[category].find(d => d.name === dbName);
+  if (!db) return;
+  
+  showToast(`正在停止 ${dbName}...`, 'success');
+  
+  try {
+    const result = await window.electronAPI.stopDatabase(dbName.toLowerCase(), category);
+    
+    if (result.success) {
+      db.running = false;
+      showToast(`${dbName} 已停止`, 'success');
+      renderDatabases(category);
+    } else {
+      showToast(`停止失败: ${result.message}`, 'error');
+    }
+  } catch (error) {
+    showToast(`停止失败: ${error.message}`, 'error');
+  }
+}
+
+function configureDatabase(dbName, category) {
+  const db = databases[category].find(d => d.name === dbName);
+  if (!db) return;
+  
+  currentConfigDatabase = { name: dbName, category: category };
+  
+  // 设置弹窗标题
+  dbConfigTitle.textContent = `${dbName} 配置`;
+  
+  // 填充表单数据
+  dbName.value = db.name;
+  dbPort.value = db.config.port || db.port;
+  dbDataPath.value = db.config.dataPath || '';
+  dbAutoStart.checked = db.config.autoStart || false;
+  dbRootUser.value = db.config.rootUser || 'root';
+  dbRootPassword.value = db.config.rootPassword || '';
+  dbEnableAuth.checked = db.config.enableAuth !== false;
+  dbMaxConnections.value = db.config.maxConnections || 100;
+  dbCacheSize.value = db.config.cacheSize || 256;
+  dbLogLevel.value = db.config.logLevel || 'info';
+  dbEnableSSL.checked = db.config.enableSSL || false;
+  
+  // 显示弹窗
+  databaseConfigModal.classList.add('show');
+}
+
+function initDatabaseConfigModal() {
+  // 标签页切换
+  const dbTabs = document.querySelectorAll('.db-tab');
+  const dbPanels = document.querySelectorAll('.db-config-panel');
+  
+  dbTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetTab = tab.dataset.tab;
+      
+      dbTabs.forEach(t => t.classList.remove('active'));
+      dbPanels.forEach(p => p.classList.remove('active'));
+      
+      tab.classList.add('active');
+      document.getElementById(`${targetTab}-config`).classList.add('active');
+    });
+  });
+  
+  // 关闭弹窗
+  closeDatabaseConfigModal.addEventListener('click', closeDatabaseConfigModalHandler);
+  cancelDatabaseConfig.addEventListener('click', closeDatabaseConfigModalHandler);
+  
+  // 点击外部关闭
+  databaseConfigModal.addEventListener('click', (e) => {
+    if (e.target === databaseConfigModal) {
+      closeDatabaseConfigModalHandler();
+    }
+  });
+  
+  // 生成随机密码
+  generatePassword.addEventListener('click', () => {
+    dbRootPassword.value = generateRandomPassword();
+  });
+  
+  // 保存配置
+  saveDatabaseConfig.addEventListener('click', saveDatabaseConfigHandler);
+}
+
+function closeDatabaseConfigModalHandler() {
+  databaseConfigModal.classList.remove('show');
+  currentConfigDatabase = null;
+}
+
+async function saveDatabaseConfigHandler() {
+  if (!currentConfigDatabase) return;
+  
+  const { name, category } = currentConfigDatabase;
+  const db = databases[category].find(d => d.name === name);
+  if (!db) return;
+  
+  // 收集配置数据
+  const config = {
+    port: parseInt(dbPort.value) || db.port,
+    dataPath: dbDataPath.value,
+    autoStart: dbAutoStart.checked,
+    rootUser: dbRootUser.value,
+    rootPassword: dbRootPassword.value,
+    enableAuth: dbEnableAuth.checked,
+    maxConnections: parseInt(dbMaxConnections.value) || 100,
+    cacheSize: parseInt(dbCacheSize.value) || 256,
+    logLevel: dbLogLevel.value,
+    enableSSL: dbEnableSSL.checked
+  };
+  
+  try {
+    const result = await window.electronAPI.saveDatabaseConfig(name.toLowerCase(), category, config);
+    
+    if (result.success) {
+      db.config = config;
+      showToast('配置保存成功', 'success');
+      closeDatabaseConfigModalHandler();
+      renderDatabases(category);
+    } else {
+      showToast('保存配置失败: ' + result.message, 'error');
+    }
+  } catch (error) {
+    showToast('保存配置失败: ' + error.message, 'error');
+  }
+}
+
+function generateRandomPassword(length = 12) {
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return password;
 }
 
 // 确保 DOM 完全加载后再初始化

@@ -23,6 +23,7 @@ body {
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .logo {
@@ -43,6 +44,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
 }
 
 .nav-item {
@@ -909,4 +911,462 @@ body {
   font-size: 12px;
   color: #9ca3af;
   text-align: center;
+}
+
+/* 设置按钮样式 */
+.settings-section {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #2a2a3e;
+}
+
+.settings-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-btn:hover {
+  background: #2a2a3e;
+  color: #e0e0e0;
+  border-color: #7c3aed;
+}
+
+/* 弹窗样式 */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal.show {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #181825;
+  border: 1px solid #2a2a3e;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #2a2a3e;
+}
+
+.modal-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin: 0;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: #2a2a3e;
+  color: #e0e0e0;
+}
+
+.modal-body {
+  padding: 24px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid #2a2a3e;
+  background: #1e1e2e;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0;
+  border-bottom: 1px solid #2a2a3e;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-info h4 {
+  font-size: 16px;
+  font-weight: 500;
+  color: #e0e0e0;
+  margin: 0 0 4px 0;
+}
+
+.setting-info p {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* 切换开关样式 */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #2a2a3e;
+  transition: 0.3s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #9ca3af;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #7c3aed;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+  background-color: #ffffff;
+}
+
+.toggle-switch:hover .toggle-slider {
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+/* 数据库管理样式 */
+.database-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.database-categories {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+  padding: 0 4px;
+  overflow-x: auto;
+}
+
+.category-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #181825;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+.category-btn:hover {
+  background: #2a2a3e;
+  color: #e0e0e0;
+  border-color: #7c3aed;
+}
+
+.category-btn.active {
+  background: #7c3aed;
+  color: #ffffff;
+  border-color: #7c3aed;
+}
+
+.database-content {
+  position: relative;
+}
+
+.database-category {
+  display: none;
+}
+
+.database-category.active {
+  display: block;
+}
+
+.database-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.database-card {
+  background: #181825;
+  border: 1px solid #2a2a3e;
+  border-radius: 12px;
+  padding: 24px;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.database-card:hover {
+  border-color: #7c3aed;
+  transform: translateY(-2px);
+}
+
+.database-card.installed {
+  border-color: #10b981;
+}
+
+.database-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.database-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.database-icon.mysql { background: linear-gradient(135deg, #00758f 0%, #00a0b0 100%); }
+.database-icon.postgresql { background: linear-gradient(135deg, #336791 0%, #4a90a4 100%); }
+.database-icon.mongodb { background: linear-gradient(135deg, #4db33d 0%, #6cc04a 100%); }
+.database-icon.redis { background: linear-gradient(135deg, #dc382d 0%, #e85a4f 100%); }
+.database-icon.neo4j { background: linear-gradient(135deg, #008cc1 0%, #00a9ce 100%); }
+.database-icon.sqlite { background: linear-gradient(135deg, #003b57 0%, #0f4c75 100%); }
+
+.database-info {
+  flex: 1;
+}
+
+.database-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 4px;
+}
+
+.database-version {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.database-status {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.database-status.installed {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.database-status.running {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.database-status.stopped {
+  background: rgba(220, 38, 38, 0.2);
+  color: #dc2626;
+}
+
+.database-status.available {
+  background: rgba(156, 163, 175, 0.2);
+  color: #9ca3af;
+}
+
+.database-description {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.database-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.database-actions .btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.database-config {
+  padding-top: 16px;
+  border-top: 1px solid #2a2a3e;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.config-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.config-row:last-child {
+  margin-bottom: 0;
+}
+
+/* 数据库配置弹窗样式 */
+.db-config-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  background: #1e1e2e;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.db-tab {
+  flex: 1;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #9ca3af;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.db-tab:hover {
+  color: #e0e0e0;
+}
+
+.db-tab.active {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.db-config-panel {
+  display: none;
+}
+
+.db-config-panel.active {
+  display: block;
+}
+
+.db-config-panel .config-item {
+  margin-bottom: 20px;
+}
+
+.db-config-panel .config-item:last-child {
+  margin-bottom: 0;
+}
+
+/* 数据库连接状态指示器 */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #1e1e2e;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.connection-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6b7280;
+}
+
+.connection-indicator.connected {
+  background: #10b981;
+  animation: pulse 2s infinite;
+}
+
+.connection-indicator.disconnected {
+  background: #dc2626;
+}
+
+.connection-indicator.connecting {
+  background: #f59e0b;
+  animation: pulse 1s infinite;
 }

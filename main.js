@@ -22,6 +22,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     backgroundColor: '#1e1e2e',
+    autoHideMenuBar: true, // 隐藏菜单栏
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -68,6 +69,27 @@ function initDatabase() {
       installed INTEGER DEFAULT 0,
       icon TEXT,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS databases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      installed INTEGER DEFAULT 0,
+      config TEXT DEFAULT '{}',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(name, category)
     )
   `);
 }
@@ -552,6 +574,254 @@ ipcMain.handle('execute-command', async (event, command) => {
     return { success: true, output };
   } catch (error) {
     return { success: false, message: error.message };
+  }
+});
+
+// 设置相关处理
+ipcMain.handle('save-settings', async (event, settings) => {
+  try {
+    // 保存设置到数据库
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO settings (key, value)
+      VALUES (?, ?)
+    `);
+    
+    stmt.run('autoStart', JSON.stringify(settings.autoStart));
+    stmt.run('startMinimized', JSON.stringify(settings.startMinimized));
+    stmt.run('closeToTray', JSON.stringify(settings.closeToTray));
+    
+    // 处理开机自启动
+    if (settings.autoStart) {
+      app.setLoginItemSettings({
+        openAtLogin: true,
+        path: process.execPath,
+        args: ['--hidden']
+      });
+    } else {
+      app.setLoginItemSettings({
+        openAtLogin: false
+      });
+    }
+    
+    return { success: true, message: '设置已保存' };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('get-settings', async () => {
+  try {
+    const settings = {};
+    
+    // 从数据库获取设置
+    const stmt = db.prepare('SELECT key, value FROM settings WHERE key IN (?, ?, ?)');
+    const rows = stmt.all('autoStart', 'startMinimized', 'closeToTray');
+    
+    rows.forEach(row => {
+      try {
+        settings[row.key] = JSON.parse(row.value);
+      } catch (e) {
+        settings[row.key] = false;
+      }
+    });
+    
+    // 检查系统的开机自启动状态
+    const loginItemSettings = app.getLoginItemSettings();
+    settings.autoStart = loginItemSettings.openAtLogin || false;
+    
+    // 设置默认值
+    if (settings.closeToTray === undefined) settings.closeToTray = true;
+    if (settings.startMinimized === undefined) settings.startMinimized = false;
+    
+    return settings;
+  } catch (error) {
+    return {
+      autoStart: false,
+      startMinimized: false,
+      closeToTray: true
+    };
+  }
+});
+
+// 数据库管理相关处理
+ipcMain.handle('install-database', async (event, dbName, category) => {
+  try {
+    let installCommand = '';
+    
+    // 根据数据库类型生成安装命令
+    switch (dbName.toLowerCase()) {
+      case 'mysql':
+        installCommand = 'scoop install mysql';
+        break;
+      case 'postgresql':
+        installCommand = 'scoop install postgresql';
+        break;
+      case 'sqlite':
+        installCommand = 'scoop install sqlite';
+        break;
+      case 'mariadb':
+        installCommand = 'scoop install mariadb';
+        break;
+      case 'mongodb':
+        installCommand = 'scoop install mongodb';
+        break;
+      case 'redis':
+        installCommand = 'scoop install redis';
+        break;
+      case 'neo4j':
+        installCommand = 'scoop install neo4j';
+        break;
+      default:
+        return { success: false, message: `不支持的数据库: ${dbName}` };
+    }
+    
+    const { stdout } = await execPromise(installCommand);
+    
+    // 保存数据库信息到数据库
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO databases (name, category, installed, config)
+      VALUES (?, ?, 1, ?)
+    `);
+    stmt.run(dbName, category, JSON.stringify({}));
+    
+    return { success: true, message: stdout };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('uninstall-database', async (event, dbName, category) => {
+  try {
+    const uninstallCommand = `scoop uninstall ${dbName}`;
+    const { stdout } = await execPromise(uninstallCommand);
+    
+    // 从数据库中删除记录
+    const stmt = db.prepare('DELETE FROM databases WHERE name = ? AND category = ?');
+    stmt.run(dbName, category);
+    
+    return { success: true, message: stdout };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('start-database', async (event, dbName, category) => {
+  try {
+    let startCommand = '';
+    
+    // 根据数据库类型生成启动命令
+    switch (dbName.toLowerCase()) {
+      case 'mysql':
+        startCommand = 'mysqld --console';
+        break;
+      case 'postgresql':
+        startCommand = 'pg_ctl start -D "C:\\scoop\\apps\\postgresql\\current\\data"';
+        break;
+      case 'mongodb':
+        startCommand = 'mongod --dbpath "C:\\scoop\\apps\\mongodb\\current\\data"';
+        break;
+      case 'redis':
+        // Redis在Windows上直接启动，使用默认配置
+        startCommand = 'start /B redis-server --port 6379';
+        break;
+      case 'neo4j':
+        startCommand = 'neo4j console';
+        break;
+      case 'sqlite':
+        return { success: true, message: 'SQLite 是嵌入式数据库，无需启动服务' };
+      default:
+        return { success: false, message: `不支持启动: ${dbName}` };
+    }
+    
+    const { stdout } = await execPromise(startCommand, { shell: 'cmd.exe' });
+    return { success: true, message: stdout };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('stop-database', async (event, dbName, category) => {
+  try {
+    let stopCommand = '';
+    
+    // 根据数据库类型生成停止命令
+    switch (dbName.toLowerCase()) {
+      case 'mysql':
+        stopCommand = 'taskkill /F /IM mysqld.exe';
+        break;
+      case 'postgresql':
+        stopCommand = 'pg_ctl stop -D "C:\\scoop\\apps\\postgresql\\current\\data"';
+        break;
+      case 'mongodb':
+        stopCommand = 'taskkill /F /IM mongod.exe';
+        break;
+      case 'redis':
+        stopCommand = 'taskkill /F /IM redis-server.exe';
+        break;
+      case 'neo4j':
+        stopCommand = 'taskkill /F /IM java.exe /FI "WINDOWTITLE eq Neo4j*"';
+        break;
+      case 'sqlite':
+        return { success: true, message: 'SQLite 是嵌入式数据库，无需停止服务' };
+      default:
+        return { success: false, message: `不支持停止: ${dbName}` };
+    }
+    
+    const { stdout } = await execPromise(stopCommand, { shell: 'cmd.exe' });
+    return { success: true, message: stdout };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('save-database-config', async (event, dbName, category, config) => {
+  try {
+    // 保存数据库配置到数据库
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO databases (name, category, installed, config)
+      VALUES (?, ?, 1, ?)
+    `);
+    stmt.run(dbName, category, JSON.stringify(config));
+    
+    return { success: true, message: '配置保存成功' };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('check-database-status', async (event, dbName) => {
+  try {
+    let checkCommand = '';
+    
+    // 根据数据库类型生成状态检查命令
+    switch (dbName.toLowerCase()) {
+      case 'mysql':
+        checkCommand = 'tasklist /FI "IMAGENAME eq mysqld.exe"';
+        break;
+      case 'postgresql':
+        checkCommand = 'tasklist /FI "IMAGENAME eq postgres.exe"';
+        break;
+      case 'mongodb':
+        checkCommand = 'tasklist /FI "IMAGENAME eq mongod.exe"';
+        break;
+      case 'redis':
+        checkCommand = 'tasklist /FI "IMAGENAME eq redis-server.exe"';
+        break;
+      case 'neo4j':
+        checkCommand = 'netstat -an | findstr :7474';
+        break;
+      case 'sqlite':
+        return { success: true, running: true, message: 'SQLite 是嵌入式数据库' };
+      default:
+        return { success: false, running: false, message: `不支持检查: ${dbName}` };
+    }
+    
+    const { stdout } = await execPromise(checkCommand, { shell: 'cmd.exe' });
+    const isRunning = stdout.includes(dbName.toLowerCase()) || stdout.includes('LISTENING');
+    
+    return { success: true, running: isRunning, message: isRunning ? '运行中' : '未运行' };
+  } catch (error) {
+    return { success: false, running: false, message: '检查失败' };
   }
 });
 

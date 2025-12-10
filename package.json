@@ -8,6 +8,7 @@
     "dev": "electron . --dev",
     "build": "electron-builder --win --x64",
     "build:dir": "electron-builder --win --x64 --dir",
+    "build:portable": "powershell -ExecutionPolicy Bypass -File build-portable.ps1",
     "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [

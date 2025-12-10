@@ -36,16 +36,8 @@
       "node_modules/file-uri-to-path/**/*"
     ],
     "win": {
-      "target": [
-        {
-          "target": "portable",
-          "arch": ["x64"]
-        }
-      ],
-      "signtoolOptions": null
-    },
-    "portable": {
-      "artifactName": "ScoopManager-Portable.exe"
+      "target": "dir",
+      "signAndEditExecutable": false
     }
   },
   "devDependencies": {
